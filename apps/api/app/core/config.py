@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     rabbitmq_url: str
     qdrant_url: str
 
+    jwt_secret_key: str = "CHANGE_ME_TO_A_STRONG_SECRET"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+
 
 @lru_cache
 def get_settings() -> Settings:
