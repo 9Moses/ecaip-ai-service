@@ -24,6 +24,13 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
+@pytest.fixture(scope="session", autouse=True)
+async def setup_db_roles(anyio_backend: str) -> None:
+    """Seed the database roles once per test session."""
+    from app.core.seed_roles import seed_roles
+    await seed_roles()
+
+
 @pytest.fixture()
 async def client() -> AsyncClient:
     """

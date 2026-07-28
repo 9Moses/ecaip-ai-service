@@ -1,9 +1,10 @@
 import asyncio
+from typing import Any
 
 from app.core.db import async_session_factory
 from app.models.role import Role
 
-ROLE_DEFINITIONS: list[dict] = [
+ROLE_DEFINITIONS: list[dict[str, Any]] = [
     {
         "name": "Super Admin",
         "permissions": {"scope": "org_wide", "manage_integrations": True, "manage_users": True},
@@ -14,11 +15,19 @@ ROLE_DEFINITIONS: list[dict] = [
     },
     {
         "name": "Claims Manager",
-        "permissions": {"scope": "claims_department", "manage_claims": True, "view_fraud_queue": True},
+        "permissions": {
+            "scope": "claims_department",
+            "manage_claims": True,
+            "view_fraud_queue": True,
+        },
     },
     {
         "name": "Underwriter",
-        "permissions": {"scope": "underwriting", "view_policy_documents": True, "view_claims_history": True},
+        "permissions": {
+            "scope": "underwriting",
+            "view_policy_documents": True,
+            "view_claims_history": True,
+        },
     },
     {
         "name": "Fraud Analyst",

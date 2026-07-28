@@ -1,7 +1,6 @@
 import hashlib
-import hashlib
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -20,11 +19,11 @@ pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 http_bearer = HTTPBearer()
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return str(pwd_context.hash(password))
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
-    return pwd_context.verify(plain_password, password_hash)
+    return bool(pwd_context.verify(plain_password, password_hash))
 
 
 def hash_token(token: str) -> str:
@@ -33,15 +32,15 @@ def hash_token(token: str) -> str:
 
 
 def create_access_token(user_id: uuid.UUID, role_name: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes= settings.access_token_expire_minutes)
-    payload = {"sub": str(user_id), "role": role_name, "exp": expire, "type" : "access"}
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
+    payload = {"sub": str(user_id), "role": role_name, "exp": expire, "type": "access"}
+    return str(jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm))
 
 
 def create_refresh_token(user_id: uuid.UUID) -> str:
-    expire = datetime.now(timezone.utc) +timedelta(minutes=settings.refresh_token_expire_days)
+    expire = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
     payload = {"sub": str(user_id), "jti": str(uuid.uuid4()), "exp": expire, "type": "refresh"}
-    return jwt.encode(payload,  settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return str(jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm))
 
 
 async def get_current_user(

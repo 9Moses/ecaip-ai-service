@@ -5,7 +5,7 @@ Revises: 38d39db8c6aa
 Create Date: 2026-07-28 16:13:24.050321
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
@@ -13,9 +13,9 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'abcb179152c5'
-down_revision: Union[str, Sequence[str], None] = '38d39db8c6aa'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '38d39db8c6aa'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -27,7 +27,10 @@ def upgrade() -> None:
     sa.Column('token_hash', sa.String(length=255), nullable=False),
     sa.Column('revoked', sa.Boolean(), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column(
+        'created_at', sa.DateTime(timezone=True),
+        server_default=sa.text('now()'), nullable=False,
+    ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('token_hash')

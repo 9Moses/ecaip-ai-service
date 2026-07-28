@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -14,4 +15,4 @@ class Role(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    permissions: Mapped[dict] = mapped_column(JSONB, default=dict)
+    permissions: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
