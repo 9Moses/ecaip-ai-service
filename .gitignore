@@ -43,6 +43,7 @@ cover/
 
 # Environments
 .env
+apps/api/.env
 .venv
 env/
 venv/

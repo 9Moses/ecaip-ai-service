@@ -14,3 +14,6 @@ ps:
 
 restart-api:
 	docker compose -f docker-compose.yml restart api
+
+build-api:
+	docker compose -f docker-compose.yml build api
