@@ -15,8 +15,9 @@ from app.models.user import User
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-#oath2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# oath2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 http_bearer = HTTPBearer()
+
 
 def hash_password(password: str) -> str:
     return str(pwd_context.hash(password))
@@ -45,13 +46,13 @@ def create_refresh_token(user_id: uuid.UUID) -> str:
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     token = credentials.credentials
     credentials_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentails",
-        headers={"WWW-Authenticate": "Bearer"}
+        headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])

@@ -12,7 +12,7 @@ from app.core.security import (
     get_current_user,
     hash_password,
     hash_token,
-    verify_password
+    verify_password,
 )
 from app.core.config import get_settings
 from app.models.refresh_token import RefreshToken
@@ -23,11 +23,12 @@ from app.schemas.auth import (
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
-    UserResponse
+    UserResponse,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
+
 
 async def _issue_tokens(db: AsyncSession, user: User) -> TokenResponse:
     access_token = create_access_token(user.id, user.role.name)
@@ -64,9 +65,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
         )
 
     user = User(
-        email=payload.email,
-        password_hash=hash_password(payload.password),
-        role_id=default_role.id
+        email=payload.email, password_hash=hash_password(payload.password), role_id=default_role.id
     )
     db.add(user)
     await db.commit()
@@ -143,7 +142,4 @@ async def logout(payload: RefreshRequest, db: AsyncSession = Depends(get_db)) ->
 
 @router.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(get_current_user)) -> UserResponse:
-    return UserResponse(
-        id=user.id, email=user.email, role=user.role.name, is_active=user.is_active
-    )
-
+    return UserResponse(id=user.id, email=user.email, role=user.role.name, is_active=user.is_active)

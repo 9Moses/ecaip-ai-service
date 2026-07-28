@@ -33,9 +33,7 @@ async def test_refresh_token_rotation_invalidates_old_token(client: AsyncClient)
     email = "rotate-test@example.com"
     password = "correct-horse-battery-staple"
 
-    reg = await client.post(
-        "/api/v1/auth/register", json={"email": email, "password": password}
-    )
+    reg = await client.post("/api/v1/auth/register", json={"email": email, "password": password})
     assert reg.status_code == 201, reg.json()
 
     login_resp = await client.post(
@@ -44,13 +42,9 @@ async def test_refresh_token_rotation_invalidates_old_token(client: AsyncClient)
     assert login_resp.status_code == 200, login_resp.json()
     old_refresh = login_resp.json()["refresh_token"]
 
-    first_refresh = await client.post(
-        "/api/v1/auth/refresh", json={"refresh_token": old_refresh}
-    )
+    first_refresh = await client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
     assert first_refresh.status_code == 200, first_refresh.json()
 
     # Reusing the old token must now be rejected (it was rotated)
-    reuse_attempt = await client.post(
-        "/api/v1/auth/refresh", json={"refresh_token": old_refresh}
-    )
+    reuse_attempt = await client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
     assert reuse_attempt.status_code == 401, reuse_attempt.json()

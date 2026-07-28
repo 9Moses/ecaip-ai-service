@@ -44,7 +44,6 @@ ROLE_DEFINITIONS: list[dict[str, Any]] = [
 ]
 
 
-
 async def seed_roles() -> None:
     async with async_session_factory() as session:
         from sqlalchemy import select
