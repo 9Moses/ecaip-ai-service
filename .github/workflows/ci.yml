@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  api-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+      - if: steps.filter.outputs.api == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - if: steps.filter.outputs.api == 'true'
+        run: pip install poetry
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: apps/api
+        run: poetry install --no-interaction --no-ansi
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: apps/api
+        run: |
+          poetry run ruff check .
+          poetry run black --check .
+
+  api-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+      - if: steps.filter.outputs.api == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - if: steps.filter.outputs.api == 'true'
+        run: pip install poetry
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: apps/api
+        run: poetry install --no-interaction --no-ansi
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: apps/api
+        run: poetry run mypy app
+
+  api-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: eacip
+          POSTGRES_PASSWORD: eacip_test_password
+          POSTGRES_DB: eacip_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eacip -d eacip_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+      - if: steps.filter.outputs.api == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - if: steps.filter.outputs.api == 'true'
+        run: pip install poetry
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: apps/api
+        run: poetry install --no-interaction --no-ansi
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://eacip:eacip_test_password@localhost:5432/eacip_test
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+        run: |
+          poetry run alembic upgrade head
+          poetry run pytest

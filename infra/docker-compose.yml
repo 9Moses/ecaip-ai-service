@@ -57,34 +57,34 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../apps/api/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+      QDRANT_URL: http://qdrant:6333
+    ports:
+      - "${API_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    volumes:
+      - ../apps/api:/app
+
 volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
   qdrant_data:
-
-api:
-  build:
-    context: ../apps/api
-    dockerfile: Dockerfile
-  restart: unless-stopped
-  env_file:
-    - ../apps/api/.env
-  environment:
-    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    REDIS_URL: redis://redis:6379/0
-    RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
-    QDRANT_URL: http://qdrant:6333
-  ports:
-    - "${API_PORT}:8000"
-  depends_on:
-    postgres:
-      condition: service_healthy
-    redis:
-      condition: service_healthy
-    rabbitmq:
-      condition: service_healthy
-    qdrant:
-      condition: service_started
-  volumes:
-    - ../apps/api:/app
