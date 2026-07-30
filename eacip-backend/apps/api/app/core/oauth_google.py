@@ -1,6 +1,7 @@
 import httpx
+from typing import Any
 
-from app.core.security import get_settings
+from app.core.config import get_settings
 
 settings = get_settings()
 
@@ -23,7 +24,7 @@ def build_google_auth_url(state: str) -> str:
     return f"{GOOGLE_AUTH_URL}?{query}"
 
 
-async def exchange_code_for_userinfo(code: str) -> dict:
+async def exchange_code_for_userinfo(code: str) -> Any:
     async with httpx.AsyncClient() as client:
         token_resp = await client.post(
             GOOGLE_TOKEN_URL,

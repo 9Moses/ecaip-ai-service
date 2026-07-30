@@ -180,6 +180,11 @@ async def google_oauth_callback(
     if user is None:
         # First-time Google sign-in: create a new EACIP identity, same as any other user
         default_role = await db.scalar(select(Role).where(Role.name == "Employee"))
+        if default_role is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Default role 'Employee' not seeded",
+            )
         user = User(
             email=email,
             password_hash=None,
