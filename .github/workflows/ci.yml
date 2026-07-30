@@ -1,0 +1,164 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  web-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'eacip-frontend/apps/web/**'
+      - if: steps.filter.outputs.web == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: eacip-frontend/apps/web/package-lock.json
+      - if: steps.filter.outputs.web == 'true'
+        working-directory: eacip-frontend/apps/web
+        run: npm ci
+      - if: steps.filter.outputs.web == 'true'
+        working-directory: eacip-frontend/apps/web
+        run: npm run lint
+
+  web-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'eacip-frontend/apps/web/**'
+      - if: steps.filter.outputs.web == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: eacip-frontend/apps/web/package-lock.json
+      - if: steps.filter.outputs.web == 'true'
+        working-directory: eacip-frontend/apps/web
+        run: npm ci
+      - if: steps.filter.outputs.web == 'true'
+        working-directory: eacip-frontend/apps/web
+        run: npm run typecheck
+
+  web-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'eacip-frontend/apps/web/**'
+      - if: steps.filter.outputs.web == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: eacip-frontend/apps/web/package-lock.json
+      - if: steps.filter.outputs.web == 'true'
+        working-directory: eacip-frontend/apps/web
+        run: npm ci
+      - if: steps.filter.outputs.web == 'true'
+        working-directory: eacip-frontend/apps/web
+        run: npm run build # placeholder until Jest/RTL tests exist
+
+  api-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'eacip-backend/apps/api/**'
+      - if: steps.filter.outputs.api == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: eacip-backend/apps/api
+        run: pip install -r requirements.txt
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: eacip-backend/apps/api
+        run: |
+          ruff check .
+          black --check .
+
+  api-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'eacip-backend/apps/api/**'
+      - if: steps.filter.outputs.api == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: eacip-backend/apps/api
+        run: pip install -r requirements.txt
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: eacip-backend/apps/api
+        run: mypy app
+
+  api-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: eacip
+          POSTGRES_PASSWORD: eacip_test_password
+          POSTGRES_DB: eacip_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eacip -d eacip_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'eacip-backend/apps/api/**'
+      - if: steps.filter.outputs.api == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: eacip-backend/apps/api
+        run: pip install -r requirements.txt
+      - if: steps.filter.outputs.api == 'true'
+        working-directory: eacip-backend/apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://eacip:eacip_test_password@localhost:5432/eacip_test
+          REDIS_URL: redis://localhost:6379/0
+          RABBITMQ_URL: amqp://guest:guest@localhost:5672/
+          QDRANT_URL: http://localhost:6333
+          JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+        run: |
+          alembic upgrade head
+          pytest
