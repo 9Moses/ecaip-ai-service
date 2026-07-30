@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     google_oauth_redirect_uri: str = "http://localhost:8000/api/v1/auth/oauth/google/callback"
     frontend_oauth_success_redirect: str = "http://localhost:3000/auth/callback"
 
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "eacip"
+    minio_secret_key: str = "eacip_dev_password"
+    minio_bucket: str = "eacip-documents"
+    minio_use_ssl: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

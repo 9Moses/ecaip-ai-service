@@ -44,3 +44,6 @@ websockets==16.1.1
 python-jose[cryptography]==3.5.0
 passlib[argon2]==1.7.4
 python-multipart==0.0.20
+
+boto3==1.43.59
+python-magic==0.4.27
