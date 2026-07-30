@@ -1,4 +1,5 @@
 import io
+from typing import Any
 
 import boto3
 from botocore.client import Config
@@ -8,7 +9,7 @@ from app.core.config import get_settings
 settings = get_settings()
 
 
-def get_storage_client():
+def get_storage_client() -> Any:
     protocol = "https" if settings.minio_use_ssl else "http"
     return boto3.client(
         "s3",
@@ -20,18 +21,18 @@ def get_storage_client():
 
 
 def upload_file(storage_path: str, content: bytes) -> None:
-    client = get_storage_client()
+    client: Any = get_storage_client()
     client.put_object(Bucket=settings.minio_bucket, key=storage_path, Body=io.BytesIO(content))
 
 
 def download_file(storage_path: str) -> bytes:
-    client = get_storage_client()
-    obj = client.get_object(Bucket=settings.minio_bucket, Key=storage_path)
-    return obj["Body"].read()
+    client: Any = get_storage_client()
+    obj: Any = client.get_object(Bucket=settings.minio_bucket, Key=storage_path)
+    return bytes(obj["Body"].read())
 
 
 def file_exists(storage_path: str) -> bool:
-    client = get_storage_client()
+    client: Any = get_storage_client()
     try:
         client.head_object(Bucket=settings.minio_bucket, Key=storage_path)
         return True
