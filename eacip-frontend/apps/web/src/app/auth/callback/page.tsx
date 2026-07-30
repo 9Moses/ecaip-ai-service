@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
 import { setTokens } from "@/lib/auth/token-storages";
 
-export default function OAuthCallbackPage() {
+function OAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -25,5 +25,17 @@ export default function OAuthCallbackPage() {
     <main className="flex min-h-screen items-center justify-center">
       <p className="text-muted-foreground">Signing you in…</p>
     </main>
+  );
+}
+
+export default function OAuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading…</p>
+      </main>
+    }>
+      <OAuthCallbackContent />
+    </Suspense>
   );
 }

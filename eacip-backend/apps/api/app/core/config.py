@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    google_oauth_redirect_uri: str = "http://localhost:8000/api/v1/auth/oauth/google/callback"
+    frontend_oauth_success_redirect: str = "http://localhost:3000/auth/callback"
+
 
 @lru_cache
 def get_settings() -> Settings:

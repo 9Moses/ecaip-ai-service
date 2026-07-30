@@ -1,3 +1,9 @@
+import secrets
+
+from fastapi import Query
+from fastapi.responses import RedirectResponse
+
+from app.core.oauth_google import build_google_auth_url, exchange_code_for_userinfo
 import uuid
 from datetime import datetime, UTC
 
@@ -143,3 +149,59 @@ async def logout(payload: RefreshRequest, db: AsyncSession = Depends(get_db)) ->
 @router.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(get_current_user)) -> UserResponse:
     return UserResponse(id=user.id, email=user.email, role=user.role.name, is_active=user.is_active)
+
+
+@router.get("/oauth/google")
+async def google_oauth_start() -> RedirectResponse:
+    state = secrets.token_urlsafe(24)
+    # For production: store `state` server-side (Redis, short TTL) and verify it
+    # on callback to prevent CSRF. Skipped here for MVP simplicity — flagged
+    # explicitly as a hardening item before production use.
+    return RedirectResponse(url=build_google_auth_url(state))
+
+
+@router.get("/oauth/google/callback")
+async def google_oauth_callback(
+    code: str = Query(...),
+    state: str = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    userinfo = await exchange_code_for_userinfo(code)
+
+    email = userinfo.get("email")
+    google_subject = userinfo.get("sub")
+    if not email or not google_subject:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Google profile missing required fields"
+        )
+
+    user = await db.scalar(select(User).where(User.email == email))
+
+    if user is None:
+        # First-time Google sign-in: create a new EACIP identity, same as any other user
+        default_role = await db.scalar(select(Role).where(Role.name == "Employee"))
+        user = User(
+            email=email,
+            password_hash=None,
+            oauth_provider="google",
+            oauth_subject=google_subject,
+            role_id=default_role.id,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    elif user.oauth_provider is None:
+        # Existing email/password user signing in with Google for the first time: link accounts
+        user.oauth_provider = "google"
+        user.oauth_subject = google_subject
+        await db.commit()
+
+    tokens = await _issue_tokens(db, user)
+
+    # Redirect back to the frontend with tokens as query params for it to capture and store.
+    # (Frontend build in Part 4 reads these on /auth/callback and moves them into its own storage.)
+    redirect_url = (
+        f"{settings.frontend_oauth_success_redirect}"
+        f"?access_token={tokens.access_token}&refresh_token={tokens.refresh_token}"
+    )
+    return RedirectResponse(url=redirect_url)

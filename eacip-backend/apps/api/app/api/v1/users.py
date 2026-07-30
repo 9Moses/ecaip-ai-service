@@ -20,7 +20,15 @@ async def list_users(
 ) -> list[UserResponse]:
     result = await db.execute(select(User))
     users = result.scalars().all()
-    return [UserResponse(id=u.id, email=u.email, role=u.role.name, is_active=u.is_active) for u in users]
+    return [
+        UserResponse(
+            id=u.id,
+            email=u.email,
+            role=u.role.name,
+            is_active=u.is_active,
+        )
+        for u in users
+    ]
 
 
 @router.patch("/{user_id}/role", response_model=UserResponse)
