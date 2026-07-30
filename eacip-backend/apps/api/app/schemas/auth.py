@@ -30,3 +30,7 @@ class UserResponse(BaseModel):
     is_active: bool
 
     model_config = {"from_attributes": True}
+
+
+class UpdateRoleRequest(BaseModel):
+    role_name: str
