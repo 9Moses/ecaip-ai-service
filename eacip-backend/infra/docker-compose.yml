@@ -62,6 +62,7 @@ services:
       context: ../apps/api
       dockerfile: Dockerfile
     restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file:
       - ../apps/api/.env
     environment:

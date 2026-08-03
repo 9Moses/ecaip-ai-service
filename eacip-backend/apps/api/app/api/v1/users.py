@@ -46,7 +46,13 @@ async def update_user_role(
     if new_role is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown role")
 
-    user.role_id = new_role.id
-    await db.commit()
-    await db.refresh(user)
+    try:
+        user.role_id = new_role.id
+        await db.commit()
+        await db.refresh(user)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update user role."
+        )
     return UserResponse(id=user.id, email=user.email, role=new_role.name, is_active=user.is_active)

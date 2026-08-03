@@ -22,7 +22,7 @@ def get_storage_client() -> Any:
 
 def upload_file(storage_path: str, content: bytes) -> None:
     client: Any = get_storage_client()
-    client.put_object(Bucket=settings.minio_bucket, key=storage_path, Body=io.BytesIO(content))
+    client.put_object(Bucket=settings.minio_bucket, Key=storage_path, Body=io.BytesIO(content))
 
 
 def download_file(storage_path: str) -> bytes:

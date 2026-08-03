@@ -73,9 +73,16 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     user = User(
         email=payload.email, password_hash=hash_password(payload.password), role_id=default_role.id
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
+    try:
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create user account.",
+        )
     return UserResponse(
         id=user.id, email=user.email, role=default_role.name, is_active=user.is_active
     )
@@ -166,7 +173,13 @@ async def google_oauth_callback(
     state: str = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    userinfo = await exchange_code_for_userinfo(code)
+    try:
+        userinfo = await exchange_code_for_userinfo(code)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to contact Google. Please try again.",
+        )
 
     email = userinfo.get("email")
     google_subject = userinfo.get("sub")

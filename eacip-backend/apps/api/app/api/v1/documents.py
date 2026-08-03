@@ -1,4 +1,17 @@
-from fastapi import APIRouter
+import hashlib
+import uuid
+
+import magic
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db import get_db
+from app.core.security import get_current_user
+from app.core.storage import upload_file
+from app.models.document import Document
+from app.models.user import User
+from app.schemas.document import DocumentResponse
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -21,3 +34,80 @@ def _detect_document_type(filename: str) -> str:
     if "policy" in lowered:
         return "policy"
     return "other"
+
+
+@router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def upload_document(
+    file: UploadFile, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)
+) -> DocumentResponse:
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
+
+    mime_type = magic.from_buffer(content, mime=True)
+    if mime_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsuppored file type: {mime_type}. Allowed: PDF, JPEG, PNG, TIFF.",
+        )
+
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    existing = await db.scalar(
+        select(Document).where(Document.owner_id == user.id, Document.file_hash == file_hash)
+    )
+    if existing:
+        return DocumentResponse.model_validate(existing)
+
+    extension = ALLOWED_MIME_TYPES[mime_type]
+    document_id = uuid.uuid4()
+    storage_path = f"{user.id}/{document_id}.{extension}"
+
+    try:
+        upload_file(storage_path, content)
+    except Exception as e:
+        print(f"Error uploading file to storage: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to upload file to storage. Please try again.",
+        ) from e
+
+    document = Document(
+        id=document_id,
+        owner_id=user.id,
+        file_name=file.filename or f"document.{extension}",
+        file_hash=file_hash,
+        mime_type=mime_type,
+        document_type=_detect_document_type(file.filename or ""),
+        storage_path=storage_path,
+        status="uploaded",
+    )
+    db.add(document)
+    await db.commit()
+    await db.refresh(document)
+
+    return DocumentResponse.model_validate(document)
+
+
+@router.get("", response_model=list[DocumentResponse])
+async def list_documents(
+    db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)
+) -> list[DocumentResponse]:
+    result = await db.execute(
+        select(Document).where(Document.owner_id == user.id).order_by(Document.created_at.desc())
+    )
+    return [DocumentResponse.model_validate(d) for d in result.scalars().all()]
+
+
+@router.get("/{document_id}", response_model=DocumentResponse)
+async def get_document(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> DocumentResponse:
+    document = await db.scalar(
+        select(Document).where(Document.id == document_id, Document.owner_id == user.id)
+    )
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    return DocumentResponse.model_validate(document)
