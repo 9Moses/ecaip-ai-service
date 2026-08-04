@@ -35,6 +35,18 @@ class Settings(BaseSettings):
 
     document_extraction_queue: str = "document.extraction"
 
+    gemini_api_key: str = ""
+    groq_api_key: str = ""
+    cerebras_api_key: str = ""
+
+    # Ordered by preference — the gateway tries these in order, falling back on failure/rate limit
+    llm_model_fallback_chain: list[str] = [
+        "groq/llama-3.3-70b-versatile",
+        "cerebras/llama3.1-70b",
+        "gemini/gemini-2.5-flash",
+    ]
+    llm_request_timeout_seconds: int = 30
+
 
 @lru_cache
 def get_settings() -> Settings:
