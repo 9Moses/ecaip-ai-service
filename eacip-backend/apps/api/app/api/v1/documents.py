@@ -12,6 +12,8 @@ from app.core.storage import upload_file
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import DocumentResponse
+from app.core.queue import publish_extraction_job
+from app.schemas.document import DocumentExtractionResponse
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -57,6 +59,14 @@ async def upload_document(
         select(Document).where(Document.owner_id == user.id, Document.file_hash == file_hash)
     )
     if existing:
+        if existing.status in ("uploaded", "failed"):
+            try:
+                await publish_extraction_job(existing.id)
+            except Exception as e:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Failed to queue extraction job for existing document.",
+                ) from e
         return DocumentResponse.model_validate(existing)
 
     extension = ALLOWED_MIME_TYPES[mime_type]
@@ -86,6 +96,17 @@ async def upload_document(
     await db.commit()
     await db.refresh(document)
 
+    try:
+        await publish_extraction_job(document.id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Failed to queue extraction job. The document is processing "
+                "but extraction hasn't started."
+            ),
+        ) from e
+
     return DocumentResponse.model_validate(document)
 
 
@@ -111,3 +132,25 @@ async def get_document(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return DocumentResponse.model_validate(document)
+
+
+@router.get("/{document_id}/extraction", response_model=DocumentExtractionResponse)
+async def get_document_extraction(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> DocumentExtractionResponse:
+    try:
+        document = await db.scalar(
+            select(Document).where(Document.id == document_id, Document.owner_id == user.id)
+        )
+        if document is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+        return DocumentExtractionResponse.model_validate(document)
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch document extraction.",
+        ) from exc

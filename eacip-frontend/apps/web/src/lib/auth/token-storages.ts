@@ -2,7 +2,8 @@ import CryptoJS from "crypto-js";
 
 const ACCESS_TOKEN_KEY = "eacip_access_token";
 const REFRESH_TOKEN_KEY = "eacip_refresh_token";
-const ENCRYPTION_KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || "eacip_default_secret_key";
+const ENCRYPTION_KEY =
+  process.env.NEXT_PUBLIC_ENCRYPTION_KEY || "eacip_default_secret_key";
 
 function encryptToken(text: string): string {
   return CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();

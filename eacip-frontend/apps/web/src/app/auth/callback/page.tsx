@@ -30,11 +30,13 @@ function OAuthCallbackContent() {
 
 export default function OAuthCallbackPage() {
   return (
-    <Suspense fallback={
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading…</p>
-      </main>
-    }>
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center">
+          <p className="text-muted-foreground">Loading…</p>
+        </main>
+      }
+    >
       <OAuthCallbackContent />
     </Suspense>
   );

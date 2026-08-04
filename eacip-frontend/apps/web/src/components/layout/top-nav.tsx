@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
 export function TopNav() {
@@ -7,8 +8,13 @@ export function TopNav() {
         <span className="text-lg font-semibold">EACIP</span>
         <Badge variant="secondary">MVP</Badge>
       </div>
-      <nav className="text-muted-foreground text-sm">
-        Claims Intelligence Platform
+      <nav className="text-muted-foreground flex items-center gap-4 text-sm">
+        <Link href="/" className="hover:text-foreground">
+          Home
+        </Link>
+        <Link href="/documents" className="hover:text-foreground">
+          Documents
+        </Link>
       </nav>
     </header>
   );

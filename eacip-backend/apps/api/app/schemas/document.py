@@ -17,7 +17,7 @@ class DocumentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class DocumentExtractionResposne(BaseModel):
+class DocumentExtractionResponse(BaseModel):
     id: uuid.UUID
     status: str
     raw_text: str | None

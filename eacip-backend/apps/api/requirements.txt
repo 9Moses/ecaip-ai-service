@@ -53,3 +53,4 @@ pdfplumber==0.11.8
 Pillow==11.3.0
 PyMuPDF==1.26.4
 pytesseract==0.3.13
+aio-pika==10.0.1

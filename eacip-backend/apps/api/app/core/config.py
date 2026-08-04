@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     minio_bucket: str = "eacip-documents"
     minio_use_ssl: bool = False
 
+    document_extraction_queue: str = "document.extraction"
+
 
 @lru_cache
 def get_settings() -> Settings:
