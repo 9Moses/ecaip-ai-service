@@ -1,8 +1,11 @@
 import json
+from typing import Any
 
 from app.schemas.extraction_fields import get_extraction_schema
 
 EXTRACTION_PROMPT_VERSION = "v1"
+SUMMARIZATION_PROMPT_VERSION = "v1"
+INCONSISTENCY_PROMPT_VERSION = "v1"
 
 _SYSTEM_PROMPT_TEMPLATE = """You are a document intelligence system
 for an insurance claims platform.
@@ -25,6 +28,39 @@ or partial, use null.
 - For monetary amounts, extract only the numeric value
 (no currency symbols).
 - Prompt version: {prompt_version}
+"""
+
+_SUMMARY_SYSTEM_PROMPT = """You are a document summarization assistant for
+an insurance claims platform.
+Summarize the following document in 2-4 concise sentences,
+written in plain English for a claims
+manager who has not read the full document. Focus on: what
+type of document this is, the key facts
+(amounts, dates, parties involved), and anything that seems
+operationally important (missing
+information, unusual amounts, urgent language). Do not speculate
+beyond what's in the text.
+Prompt version: {prompt_version}
+"""
+
+_INCONSISTENCY_SYSTEM_PROMPT = """You are a document consistency reviewer
+for an insurance claims platform.
+You will be given extracted structured fields and the original
+document text. Identify any semantic
+inconsistencies, contradictions, or suspicious patterns that
+would not be caught by simple field
+validation — for example: a narrative that contradicts a stated
+amount or date, mismatched names,
+or claims that seem internally contradictory.
+
+Respond with ONLY a JSON array (no markdown, no explanation)
+of objects, each with:
+- "field": the relevant field name, or "general" if not field-specific
+- "message": a plain-English description of the issue
+- "severity": one of "low", "medium", "high"
+
+If you find no issues, respond with an empty array: []
+Prompt version: {prompt_version}
 """
 
 
@@ -69,3 +105,17 @@ def build_retry_prompt(
         """Respond again with ONLY corrected valid JSON
         matching the schema. No markdown, no explanation."""
     )
+
+
+def build_summary_prompt(raw_text: str) -> tuple[str, str]:
+    system_prompt = _SUMMARY_SYSTEM_PROMPT.format(prompt_version=SUMMARIZATION_PROMPT_VERSION)
+    user_prompt = f"Document text:\n\n{raw_text[:12000]}"
+    return system_prompt, user_prompt
+
+
+def build_inconsistency_prompt(extracted_fields: dict[str, Any], raw_text: str) -> tuple[str, str]:
+    system_prompt = _INCONSISTENCY_SYSTEM_PROMPT.format(prompt_version=INCONSISTENCY_PROMPT_VERSION)
+    user_prompt = (
+        f"Extracted fields:\n{extracted_fields}\n\n" f"Original document text:\n{raw_text[:8000]}"
+    )
+    return system_prompt, user_prompt

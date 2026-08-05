@@ -14,6 +14,10 @@ from app.services.extraction.service import extract_document_text
 from app.core.queue import publish_ai_extraction_job
 from app.models.document_extraction import DocumentExtraction
 from app.services.ai_extraction.service import extract_structured_fields
+from app.services.ai_extraction.service import (
+    detect_inconsistencies,
+    summarize_document,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("extraction_worker")
@@ -98,6 +102,13 @@ async def process_ai_extraction_message(
             extraction.extracted_fields = result.extracted_fields
             extraction.raw_llm_output = result.raw_llm_output
             extraction.error_message = result.error_message
+
+            if result.status == "completed":
+                extraction.summary = await summarize_document(document.raw_text)
+                extraction.inconsistencies = await detect_inconsistencies(
+                    document.document_type, result.extracted_fields, document.raw_text
+                )
+
             await db.commit()
 
             logger.info(

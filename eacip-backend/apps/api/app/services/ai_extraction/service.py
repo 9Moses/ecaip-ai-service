@@ -8,6 +8,9 @@ from app.core.llm_gateway import LLMGatewayError, complete
 from app.schemas.extraction_fields import get_extraction_schema
 from app.services.ai_extraction.json_utils import extract_json_from_llm_response
 from app.services.ai_extraction.prompts import build_extraction_prompt, build_retry_prompt
+from app.services.ai_extraction.prompts import build_summary_prompt
+from app.services.ai_extraction.prompts import build_inconsistency_prompt
+from app.services.ai_extraction.inconsistency_rules import run_rule_based_checks
 
 logger = logging.getLogger("ai_extraction")
 
@@ -93,3 +96,57 @@ def _last_validation_error(response_text: str, schema_cls: type[BaseModel]) -> s
         return f"JSON parse error: {exc}"
     except ValidationError as exc:
         return str(exc)
+
+
+async def summarize_document(raw_text: str) -> str | None:
+    system_prompt, user_prompt = build_summary_prompt(raw_text)
+    try:
+        return (await complete(system_prompt, user_prompt)).strip()
+    except LLMGatewayError as exc:
+        logger.error("Summarization failed: %s", exc)
+        return None
+
+
+async def find_llm_inconsistencies(extracted_fields: dict[str, Any], raw_text: str) -> list[dict[str, Any]]:
+    system_prompt, user_prompt = build_inconsistency_prompt(extracted_fields, raw_text)
+    try:
+        response_text = await complete(system_prompt, user_prompt)
+    except LLMGatewayError as exc:
+        logger.error("LLM inconsistency check failed: %s", exc)
+        return []
+
+    try:
+        raw = extract_json_from_llm_response(
+            f'{{"items": {response_text}}}'
+            if response_text.strip().startswith("[")
+            else response_text
+        )
+        items = raw.get("items", raw) if isinstance(raw, dict) else raw
+    except ValueError:
+        logger.warning("""
+        Could not parse inconsistency check response
+        as JSON — treating as no findings
+        """)
+        return []
+
+    findings = []
+    if isinstance(items, list):
+        for item in items:
+            if isinstance(item, dict) and "message" in item:
+                findings.append(
+                    {
+                        "source": "llm",
+                        "field": item.get("field", "general"),
+                        "message": item["message"],
+                        "severity": item.get("severity", "medium"),
+                    }
+                )
+    return findings
+
+
+async def detect_inconsistencies(
+    document_type: str, extracted_fields: dict[str, Any], raw_text: str
+) -> list[dict[str, Any]]:
+    rule_findings = run_rule_based_checks(document_type, extracted_fields)
+    llm_findings = await find_llm_inconsistencies(extracted_fields, raw_text)
+    return rule_findings + llm_findings

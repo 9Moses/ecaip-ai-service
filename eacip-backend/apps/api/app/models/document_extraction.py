@@ -21,7 +21,7 @@ class DocumentExtraction(Base):
 
     extracted_fields: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    inconsistencies: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    inconsistencies: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
 
     raw_llm_output: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

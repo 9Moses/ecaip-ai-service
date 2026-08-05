@@ -5,6 +5,7 @@ import magic
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, UTC
 
 from app.core.db import get_db
 from app.core.security import get_current_user
@@ -14,6 +15,8 @@ from app.models.user import User
 from app.schemas.document import DocumentResponse
 from app.core.queue import publish_extraction_job
 from app.schemas.document import DocumentExtractionResponse
+from app.models.document_extraction import DocumentExtraction
+from app.schemas.ai_extraction import AIExtractionResponse, ConfirmExtractionRequest
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -154,3 +157,56 @@ async def get_document_extraction(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch document extraction.",
         ) from exc
+
+
+@router.get("/{document_id}/ai-extraction", response_model=AIExtractionResponse)
+async def get_ai_extraction(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> AIExtractionResponse:
+    document = await db.scalar(
+        select(Document).where(Document.id == document_id, Document.owner_id == user.id)
+    )
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    extraction = await db.scalar(
+        select(DocumentExtraction).where(DocumentExtraction.document_id == document_id)
+    )
+    if extraction is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI extraction has not started yet for this document",
+        )
+    return AIExtractionResponse.model_validate(extraction)
+
+
+@router.post("/{document_id}/ai-extraction/confirm", response_model=AIExtractionResponse)
+async def confirm_ai_extraction(
+    document_id: uuid.UUID,
+    payload: ConfirmExtractionRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> AIExtractionResponse:
+    document = await db.scalar(
+        select(Document).where(Document.id == document_id, Document.owner_id == user.id)
+    )
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    extraction = await db.scalar(
+        select(DocumentExtraction).where(DocumentExtraction.document_id == document_id)
+    )
+    if extraction is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No AI extraction found to confirm"
+        )
+
+    extraction.extracted_fields = payload.extracted_fields
+    extraction.confirmed_by = user.id
+    extraction.confirmed_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(extraction)
+
+    return AIExtractionResponse.model_validate(extraction)
