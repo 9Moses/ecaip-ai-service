@@ -1,3 +1,4 @@
+import uuid as uuid_module
 import asyncio
 import json
 import logging
@@ -10,6 +11,9 @@ from app.core.db import async_session_factory
 from app.core.storage import download_file
 from app.models.document import Document
 from app.services.extraction.service import extract_document_text
+from app.core.queue import publish_ai_extraction_job
+from app.models.document_extraction import DocumentExtraction
+from app.services.ai_extraction.service import extract_structured_fields
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("extraction_worker")
@@ -54,21 +58,67 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None
                 document.error_message = str(exc)
 
             await db.commit()
+            await publish_ai_extraction_job(document.id)
+
+            return
+
+
+async def process_ai_extraction_message(
+    message: aio_pika.abc.AbstractIncomingMessage,
+) -> None:
+    async with message.process():
+        payload = json.loads(message.body.decode())
+        document_id = uuid_module.UUID(payload["document_id"])
+        logger.info("Running structure AI extraction for document %s", document_id)
+
+        async with async_session_factory() as db:
+            document = await db.scalar(select(Document).where(Document.id == document_id))
+            if document is None or not document.raw_text:
+                logger.warning(
+                    """
+                Document %s missing or has no raw_text - skipping AI extraction
+                """,
+                    document_id,
+                )
+                return
+
+            extraction = await db.scalar(
+                select(DocumentExtraction).where(DocumentExtraction.document_id == document_id)
+            )
+            if extraction is None:
+                extraction = DocumentExtraction(document_id=document_id, status="processing")
+                db.add(extraction)
+            else:
+                extraction.status = "processing"
+            await db.commit()
+
+            result = await extract_structured_fields(document.document_type, document.raw_text)
+
+            extraction.status = result.status
+            extraction.extracted_fields = result.extracted_fields
+            extraction.raw_llm_output = result.raw_llm_output
+            extraction.error_message = result.error_message
+            await db.commit()
+
+            logger.info(
+                "AI extraction from document %s finished with status %s", document_id, result.status
+            )
 
 
 async def main() -> None:
     connection = await aio_pika.connect_robust(settings.rabbitmq_url)
     async with connection:
         channel = await connection.channel()
-        await channel.set_qos(prefetch_count=2)  # process up to 2 documents concurrently per worker
-        queue = await channel.declare_queue(settings.document_extraction_queue, durable=True)
+        await channel.set_qos(prefetch_count=2)
+        # process up to 2 documents concurrently per worker
 
-        logger.info(
-            "Worker started, waiting for extraction jobs on '%s'...",
-            settings.document_extraction_queue,
-        )
+        ocr_queue = await channel.declare_queue(settings.document_extraction_queue, durable=True)
+        ai_queue = await channel.declare_queue(settings.ai_extraction_queue, durable=True)
 
-        await queue.consume(process_message, no_ack=False)
+        logger.info("Worker started,consuming OCR and AI extraction queues...")
+
+        await ocr_queue.consume(process_message)
+        await ai_queue.consume(process_ai_extraction_message)
 
         await asyncio.Future()  # run forever
 

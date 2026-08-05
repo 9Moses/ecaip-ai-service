@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     minio_use_ssl: bool = False
 
     document_extraction_queue: str = "document.extraction"
+    ai_extraction_queue: str = "document.ai_extraction"
 
     gemini_api_key: str = ""
     groq_api_key: str = ""
