@@ -34,7 +34,7 @@ export function useAIExtraction(documentId: string | null) {
       return data;
     },
     enabled: !!documentId,
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: { response?: { status?: number } }) => {
       // A 404 here just means AI extraction hasn't started yet — keep polling instead of giving up
       if (error?.response?.status === 404) return true;
       return failureCount < 2;

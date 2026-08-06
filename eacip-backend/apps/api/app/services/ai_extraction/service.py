@@ -107,7 +107,9 @@ async def summarize_document(raw_text: str) -> str | None:
         return None
 
 
-async def find_llm_inconsistencies(extracted_fields: dict[str, Any], raw_text: str) -> list[dict[str, Any]]:
+async def find_llm_inconsistencies(
+    extracted_fields: dict[str, Any], raw_text: str
+) -> list[dict[str, Any]]:
     system_prompt, user_prompt = build_inconsistency_prompt(extracted_fields, raw_text)
     try:
         response_text = await complete(system_prompt, user_prompt)
