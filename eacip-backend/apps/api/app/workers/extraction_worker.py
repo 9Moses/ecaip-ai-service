@@ -156,9 +156,19 @@ async def process_indexing_message(message: aio_pika.abc.AbstractIncomingMessage
                     document_type=document.document_type,
                     raw_text=document.raw_text,
                 )
-                logger.info("Indexed %d chunks for document %s", chunk_count, document_id)
+                logger.info(
+                    "Indexed %d chunks for document %s",
+                    chunk_count,
+                    document_id,
+                )
             except Exception:
-                logger.exception("Indexing failed for document %s — message will be nacked for retry", document_id)
+                logger.exception(
+                    """
+                    Indexing failed for document %s —
+                    message will be nacked for retry
+                    """,
+                    document_id,
+                )
                 raise  # re-raise so aio_pika nacks the message and retries
 
 
