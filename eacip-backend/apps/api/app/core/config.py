@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     ]
     llm_request_timeout_seconds: int = 30
 
+    embedding_model_name: str = "all-MiniLM-L6-v2"
+    embedding_dimensions: int = 384
+
+    qdrant_collection: str = "document_chunks"
+    chunk_target_tokens: int = 650  # mid-point of the 500-800 token target range
+    chunk_overlap_tokens: int = 80
+
+    indexing_queue: str = "document.indexing"
+
 
 @lru_cache
 def get_settings() -> Settings:

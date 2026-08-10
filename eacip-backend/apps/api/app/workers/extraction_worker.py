@@ -11,13 +11,14 @@ from app.core.db import async_session_factory
 from app.core.storage import download_file
 from app.models.document import Document
 from app.services.extraction.service import extract_document_text
-from app.core.queue import publish_ai_extraction_job
+from app.core.queue import publish_ai_extraction_job, publish_indexing_job
 from app.models.document_extraction import DocumentExtraction
 from app.services.ai_extraction.service import extract_structured_fields
 from app.services.ai_extraction.service import (
     detect_inconsistencies,
     summarize_document,
 )
+from app.services.rag.indexing import index_document
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("extraction_worker")
@@ -63,6 +64,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None
 
             await db.commit()
             await publish_ai_extraction_job(document.id)
+            await publish_indexing_job(document.id)
 
             return
 
@@ -116,6 +118,36 @@ async def process_ai_extraction_message(
             )
 
 
+async def process_indexing_message(message: aio_pika.abc.AbstractIncomingMessage) -> None:
+    async with message.process():
+        payload = json.loads(message.body.decode())
+        document_id = uuid_module.UUID(payload["document_id"])
+        logger.info("Indexing document %s into Qdrant", document_id)
+
+        async with async_session_factory() as db:
+            document = await db.scalar(select(Document).where(Document.id == document_id))
+            if document is None or not document.raw_text:
+                logger.warning(
+                    """
+                    Document %s missing or has no raw_text —
+                    skipping indexing
+                    """,
+                    document_id,
+                )
+                return
+
+            try:
+                chunk_count = index_document(
+                    document_id=document.id,
+                    owner_id=document.owner_id,
+                    document_type=document.document_type,
+                    raw_text=document.raw_text,
+                )
+                logger.info("Indexed %d chunks for document %s", chunk_count, document_id)
+            except Exception:
+                logger.exception("Indexing failed for document %s", document_id)
+
+
 async def main() -> None:
     connection = await aio_pika.connect_robust(settings.rabbitmq_url)
     async with connection:
@@ -125,11 +157,13 @@ async def main() -> None:
 
         ocr_queue = await channel.declare_queue(settings.document_extraction_queue, durable=True)
         ai_queue = await channel.declare_queue(settings.ai_extraction_queue, durable=True)
+        indexing_queue = await channel.declare_queue(settings.indexing_queue, durable=True)
 
         logger.info("Worker started,consuming OCR and AI extraction queues...")
 
         await ocr_queue.consume(process_message)
         await ai_queue.consume(process_ai_extraction_message)
+        await indexing_queue.consume(process_indexing_message)
 
         await asyncio.Future()  # run forever
 

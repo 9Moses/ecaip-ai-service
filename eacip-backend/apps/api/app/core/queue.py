@@ -34,3 +34,17 @@ async def publish_ai_extraction_job(document_id: uuid.UUID) -> None:
             ),
             routing_key=settings.ai_extraction_queue,
         )
+
+
+async def publish_indexing_job(document_id: uuid.UUID) -> None:
+    connection = await aio_pika.connect_robust(settings.rabbitmq_url)
+    async with connection:
+        channel = await connection.channel()
+        await channel.declare_queue(settings.indexing_queue, durable=True)
+        await channel.default_exchange.publish(
+            aio_pika.Message(
+                body=json.dumps({"document_id": str(document_id)}).encode(),
+                delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+            ),
+            routing_key=settings.indexing_queue,
+        )
