@@ -13,7 +13,7 @@ from app.core.storage import upload_file
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import DocumentResponse
-from app.core.queue import publish_extraction_job
+from app.core.queue import publish_extraction_job, publish_indexing_job
 from app.schemas.document import DocumentExtractionResponse
 from app.models.document_extraction import DocumentExtraction
 from app.schemas.ai_extraction import AIExtractionResponse, ConfirmExtractionRequest
@@ -135,6 +135,44 @@ async def get_document(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return DocumentResponse.model_validate(document)
+
+
+@router.post("/{document_id}/reindex", status_code=status.HTTP_202_ACCEPTED)
+async def reindex_document(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    """Re-queues a document for Qdrant vector indexing.
+
+    Use this when a document shows status 'extracted' in the DB but the
+    chatbot reports no excerpts (i.e., the document was never indexed into
+    the vector store, e.g. due to the now-fixed extraction-worker bug).
+    """
+    document = await db.scalar(
+        select(Document).where(Document.id == document_id, Document.owner_id == user.id)
+    )
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    if not document.raw_text:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Document has no extracted text (status: {document.status!r}). "
+                "Re-upload the document to trigger extraction first."
+            ),
+        )
+
+    try:
+        await publish_indexing_job(document.id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to queue indexing job. Please try again.",
+        ) from e
+
+    return {"detail": "Indexing job queued", "document_id": str(document_id)}
 
 
 @router.get("/{document_id}/extraction", response_model=DocumentExtractionResponse)

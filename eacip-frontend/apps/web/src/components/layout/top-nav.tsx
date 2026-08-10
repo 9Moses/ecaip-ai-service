@@ -15,6 +15,9 @@ export function TopNav() {
         <Link href="/documents" className="hover:text-foreground">
           Documents
         </Link>
+        <Link href="/chat" className="hover:text-foreground">
+          Chat
+        </Link>
       </nav>
     </header>
   );

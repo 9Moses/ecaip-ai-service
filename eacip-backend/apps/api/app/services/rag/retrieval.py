@@ -49,9 +49,9 @@ def retrieve_relevant_chunks(
 
     return [
         RetrievedChunk(
-            document_id=hit.payload["document_id"],
-            chunk_index=hit.payload["chunk_index"],
-            text=hit.payload["text"],
+            document_id=hit.payload["document_id"] if hit.payload else "",
+            chunk_index=hit.payload["chunk_index"] if hit.payload else 0,
+            text=hit.payload["text"] if hit.payload else "",
             score=hit.score,
         )
         for hit in response.points

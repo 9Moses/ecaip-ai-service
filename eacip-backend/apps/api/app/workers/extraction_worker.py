@@ -41,6 +41,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None
             document.status = "processing"
             await db.commit()
 
+            extraction_succeeded = False
             try:
                 content = download_file(document.storage_path)
                 result = extract_document_text(content, document.mime_type)
@@ -50,6 +51,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None
                 document.page_count = result.page_count
                 document.status = "extracted"
                 document.error_message = None
+                extraction_succeeded = True
                 logger.info(
                     "Extracted document %s via %s (%d chars, %d pages)",
                     document_id,
@@ -63,8 +65,19 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None
                 document.error_message = str(exc)
 
             await db.commit()
-            await publish_ai_extraction_job(document.id)
-            await publish_indexing_job(document.id)
+
+            # Only publish downstream jobs when extraction actually produced text.
+            # Publishing on failure would silently enqueue jobs that skip due to
+            # missing raw_text, leaving the vector store empty and the chatbot
+            # with no document context.
+            if extraction_succeeded:
+                await publish_ai_extraction_job(document.id)
+                await publish_indexing_job(document.id)
+            else:
+                logger.warning(
+                    "Skipping AI extraction and indexing for document %s due to extraction failure",
+                    document_id,
+                )
 
             return
 
@@ -145,7 +158,8 @@ async def process_indexing_message(message: aio_pika.abc.AbstractIncomingMessage
                 )
                 logger.info("Indexed %d chunks for document %s", chunk_count, document_id)
             except Exception:
-                logger.exception("Indexing failed for document %s", document_id)
+                logger.exception("Indexing failed for document %s — message will be nacked for retry", document_id)
+                raise  # re-raise so aio_pika nacks the message and retries
 
 
 async def main() -> None:
