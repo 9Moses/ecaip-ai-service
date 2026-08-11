@@ -79,7 +79,9 @@ class TableauBridge(BIBridge):
         )
 
     @classmethod
-    def from_encrypted_config(cls, config: dict[str, str], encrypted_pat_secret: bytes) -> "TableauBridge":
+    def from_encrypted_config(
+        cls, config: dict[str, str], encrypted_pat_secret: bytes
+    ) -> "TableauBridge":
         return cls(
             server_url=config["server_url"],
             site_id=config["site_id"],

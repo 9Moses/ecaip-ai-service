@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.chat import ChatMessageResponse, ChatSessionResponse, SendMessageRequest
 from app.services.rag.context import assemble_context
 from app.services.rag.prompts import build_chat_prompt
+from app.services.bi.formatting import format_as_text_table, to_chart_data
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -81,9 +82,11 @@ async def send_message(
     db.add(user_message)
     await db.commit()
 
-    context = await assemble_context(payload.content, user.id)
+    context = await assemble_context(payload.content, user.id, db)
+
+    bi_text_tables = [format_as_text_table(r) for r in context.bi_results]
     system_prompt, user_prompt = build_chat_prompt(
-        payload.content, [c.text for c in context.chunks]
+        payload.content, [c.text for c in context.chunks], bi_text_tables
     )
 
     sources = [
@@ -94,6 +97,7 @@ async def send_message(
         }
         for c in context.chunks
     ]
+    chart_data = [to_chart_data(r) for r in context.bi_results]
 
     async def event_stream() -> AsyncIterator[str]:
         full_response_parts: list[str] = []
@@ -121,11 +125,16 @@ async def send_message(
         # to keep writing to after streaming a long-running response.
         async with async_session_factory() as persist_db:
             assistant_message = ChatMessage(
-                session_id=session_id, role="assistant", content=final_content, sources=sources
+                session_id=session_id,
+                role="assistant",
+                content=final_content,
+                sources=sources,
+                chart_data=chart_data,
             )
             persist_db.add(assistant_message)
             await persist_db.commit()
 
-        yield f"data: {json.dumps({'type': 'done', 'sources': sources})}\n\n"
+        done_payload = {"type": "done", "sources": sources, "chart_data": chart_data}
+        yield f"data: {json.dumps(done_payload)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

@@ -18,6 +18,7 @@ class ChatMessageResponse(BaseModel):
     role: str
     content: str
     sources: list[dict[str, Any]]
+    chart_data: list[dict[str, Any]]
     created_at: datetime
 
     model_config = {"from_attributes": True}

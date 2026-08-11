@@ -22,13 +22,26 @@ Document excerpts:
 """
 
 
-def build_chat_prompt(question: str, context_chunks: list[str]) -> tuple[str, str]:
-    if not context_chunks:
-        context_block = "(No relevant document excerpts were found.)"
-    else:
-        context_block = "\n\n".join(
+def build_chat_prompt(
+    question: str,
+    context_chunks: list[str],
+    bi_text_tables: list[str] | None = None,
+) -> tuple[str, str]:
+    context_parts = []
+
+    if context_chunks:
+        excerpts = "\n\n".join(
             f"[Excerpt {i + 1}]\n{chunk}" for i, chunk in enumerate(context_chunks)
         )
+        context_parts.append(f"Document excerpts:\n{excerpts}")
+
+    if bi_text_tables:
+        tables = "\n\n".join(bi_text_tables)
+        context_parts.append(f"Business intelligence data:\n{tables}")
+
+    context_block = (
+        "\n\n---\n\n".join(context_parts) if context_parts else "(No relevant context was found.)"
+    )
 
     system_prompt = _CHAT_SYSTEM_PROMPT.format(
         prompt_version=CHAT_PROMPT_VERSION, context_block=context_block
