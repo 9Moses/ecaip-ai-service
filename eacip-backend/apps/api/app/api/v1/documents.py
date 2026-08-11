@@ -17,6 +17,8 @@ from app.core.queue import publish_extraction_job, publish_indexing_job
 from app.schemas.document import DocumentExtractionResponse
 from app.models.document_extraction import DocumentExtraction
 from app.schemas.ai_extraction import AIExtractionResponse, ConfirmExtractionRequest
+from app.models.fraud_flag import FraudFlag
+from app.services.fraud.service import assess_fraud_risk
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -246,5 +248,41 @@ async def confirm_ai_extraction(
     extraction.confirmed_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(extraction)
+
+    # Fraud assessment runs against the just-confirmed (possibly human-corrected) data
+    assessment = await assess_fraud_risk(
+        db=db,
+        document_id=document.id,
+        owner_id=document.owner_id,
+        document_type=document.document_type,
+        extracted_fields=payload.extracted_fields,
+        raw_text=document.raw_text or "",
+    )
+
+    if assessment.should_flag:
+        existing_flag = await db.scalar(
+            select(FraudFlag).where(FraudFlag.document_id == document_id)
+        )
+        if existing_flag is None:
+            db.add(
+                FraudFlag(
+                    document_id=document_id,
+                    claim_reference=payload.extracted_fields.get("claim_number"),
+                    score=assessment.score,
+                    rationale=assessment.rationale,
+                    evidence=assessment.evidence,
+                    status="open",
+                )
+            )
+        else:
+            # Re-confirmation (e.g., a field was corrected after an earlier confirm) —
+            # update the existing flag rather than creating a duplicate for the same document
+            existing_flag.score = assessment.score
+            existing_flag.rationale = assessment.rationale
+            existing_flag.evidence = assessment.evidence
+            # Deliberately NOT resetting status here — if a Fraud Analyst already marked
+            # this "cleared" or "confirmed_fraud", a re-confirmation shouldn't silently
+            # reopen their decision. Only score/rationale/evidence refresh.
+        await db.commit()
 
     return AIExtractionResponse.model_validate(extraction)

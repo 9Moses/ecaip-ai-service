@@ -1,11 +1,14 @@
 import uuid
 from datetime import datetime
+from typing import TypeAlias
 
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
+
+FraudEvidence: TypeAlias = list[dict[str, str]]
 
 
 class FraudFlag(Base):
@@ -19,7 +22,7 @@ class FraudFlag(Base):
 
     score: Mapped[float] = mapped_column(Numeric(3, 2))  # 0.00 - 1.00
     rationale: Mapped[str] = mapped_column(Text)
-    evidence: Mapped[list[dict[str, object]]] = mapped_column(JSONB, default=list)
+    evidence: Mapped[FraudEvidence] = mapped_column(JSONB, default=list)
 
     status: Mapped[str] = mapped_column(String(30), default="open")
     # open -> under_review -> cleared | confirmed_fraud
