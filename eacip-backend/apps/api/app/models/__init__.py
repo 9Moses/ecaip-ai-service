@@ -5,6 +5,7 @@ from app.models.role import Role
 from app.models.user import User
 from app.models.chat import ChatMessage, ChatSession
 from app.models.fraud_flag import FraudFlag
+from app.models.bi_connection import BIConnection
 
 __all__ = [
     "Role",
@@ -15,4 +16,5 @@ __all__ = [
     "ChatMessage",
     "ChatSession",
     "FraudFlag",
+    "BIConnection",
 ]

@@ -57,6 +57,8 @@ class Settings(BaseSettings):
 
     indexing_queue: str = "document.indexing"
 
+    bi_credentials_encryption_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
