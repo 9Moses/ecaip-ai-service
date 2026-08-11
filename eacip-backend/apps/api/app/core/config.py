@@ -48,8 +48,8 @@ class Settings(BaseSettings):
     ]
     llm_request_timeout_seconds: int = 30
 
-    embedding_model_name: str = "all-MiniLM-L6-v2"
-    embedding_dimensions: int = 384
+    embedding_model_name: str = "gemini/gemini-embedding-2"
+    embedding_dimensions: int = 768
 
     qdrant_collection: str = "document_chunks"
     chunk_target_tokens: int = 650  # mid-point of the 500-800 token target range

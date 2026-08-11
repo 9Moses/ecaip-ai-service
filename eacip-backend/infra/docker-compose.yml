@@ -62,8 +62,7 @@ services:
       context: ../apps/api
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: >
-      sh -c "pip install qdrant-client sentence-transformers && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     env_file:
       - ../apps/api/.env
     environment:
@@ -114,8 +113,7 @@ services:
       context: ../apps/api
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: >
-      sh -c "pip install qdrant-client sentence-transformers && python -m app.workers.extraction_worker"
+    command: ["python", "-m", "app.workers.extraction_worker"]
     env_file:
       - ../apps/api/.env
     environment:

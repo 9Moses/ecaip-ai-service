@@ -50,4 +50,3 @@ aio-pika==10.0.1
 litellm==1.95.0
 
 qdrant-client==1.18.0
-sentence-transformers==5.1.0
