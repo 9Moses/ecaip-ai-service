@@ -1,7 +1,18 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/auth/use-auth";
+
+const FRAUD_QUEUE_ROLES = [
+  "Fraud Analyst",
+  "Claims Manager",
+  "Admin",
+  "Super Admin",
+];
 
 export function TopNav() {
+  const { user } = useAuth();
+  const canSeeFraudQueue = user && FRAUD_QUEUE_ROLES.includes(user.role);
+
   return (
     <header className="flex items-center justify-between border-b px-6 py-4">
       <div className="flex items-center gap-2">
@@ -18,6 +29,11 @@ export function TopNav() {
         <Link href="/chat" className="hover:text-foreground">
           Chat
         </Link>
+        {canSeeFraudQueue && (
+          <Link href="/fraud" className="hover:text-foreground">
+            Fraud Queue
+          </Link>
+        )}
       </nav>
     </header>
   );
