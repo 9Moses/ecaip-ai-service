@@ -71,10 +71,16 @@ class TableauBridge(BIBridge):
         columns = list(data_rows[0].keys()) if data_rows else []
         rows = [[row.get(col) for col in columns] for row in data_rows]
 
+        dashboard_url = (
+            f"{self.server_url}/"
+            f"#/site/{self.site_id}/datasources/{self.datasource_luid}"
+        )
+
         return BIQueryResult(
             columns=columns,
             rows=rows,
             source_label="Tableau (live data source)",
+            dashboard_url=dashboard_url,
             is_mock_data=False,
         )
 

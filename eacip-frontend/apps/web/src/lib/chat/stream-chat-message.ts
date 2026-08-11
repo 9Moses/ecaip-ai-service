@@ -1,10 +1,18 @@
 import { env } from "@/lib/env";
 import { getAccessToken } from "../auth/token-storages";
 
+export interface ChartDataEntry {
+  source_label: string;
+  is_mock_data: boolean;
+  columns: string[];
+  rows: (string | number | null)[][];
+  dashboard_url: string | null;
+}
+
 export type ChatStreamEvent =
   | { type: "notice"; content: string }
   | { type: "delta"; content: string }
-  | { type: "done"; sources: ChatSource[] };
+  | { type: "done"; sources: ChatSource[]; chart_data: ChartDataEntry[] };
 
 export interface ChatSource {
   document_id: string;

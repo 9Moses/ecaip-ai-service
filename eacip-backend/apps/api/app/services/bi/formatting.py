@@ -17,4 +17,5 @@ def to_chart_data(result: BIQueryResult) -> dict[str, Any]:
         "is_mock_data": result.is_mock_data,
         "columns": result.columns,
         "rows": result.rows,
+        "dashboard_url": result.dashboard_url,
     }

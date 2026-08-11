@@ -14,6 +14,7 @@ import {
 } from "@/lib/chat/use-chat-sessions";
 import {
   streamChatMessage,
+  type ChartDataEntry,
   type ChatSource,
 } from "@/lib/chat/stream-chat-message";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,6 +24,7 @@ function ChatContent() {
   const [inputValue, setInputValue] = useState("");
   const [streamingText, setStreamingText] = useState("");
   const [streamingNotice, setStreamingNotice] = useState<string | null>(null);
+  const [streamingChartData, setStreamingChartData] = useState<ChartDataEntry[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -66,12 +68,16 @@ function ChatContent() {
         if (event.type === "notice") setStreamingNotice(event.content);
         if (event.type === "delta")
           setStreamingText((prev) => prev + event.content);
-        if (event.type === "done") finalSources = event.sources;
+        if (event.type === "done") {
+          finalSources = event.sources;
+          setStreamingChartData(event.chart_data);
+        }
       });
     } finally {
       setIsStreaming(false);
       setStreamingText("");
       setStreamingNotice(null);
+      setStreamingChartData([]);
       // The backend has now persisted both messages — refetch to get the canonical version
       queryClient.invalidateQueries({
         queryKey: ["chat", "sessions", sessionId, "messages"],
@@ -123,6 +129,7 @@ function ChatContent() {
                   role={message.role}
                   content={message.content}
                   sources={message.sources}
+                  chartData={message.chart_data}
                 />
               ))}
               {isStreaming && (
@@ -135,6 +142,7 @@ function ChatContent() {
                   <MessageBubble
                     role="assistant"
                     content={streamingText}
+                    chartData={streamingChartData}
                     isStreaming
                   />
                 </>

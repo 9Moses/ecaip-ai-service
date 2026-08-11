@@ -3,7 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api-client";
-import type { ChatSource } from "@/lib/chat/stream-chat-message";
+import type {
+  ChartDataEntry,
+  ChatSource,
+} from "@/lib/chat/stream-chat-message";
 
 export interface ChatSession {
   id: string;
@@ -16,6 +19,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   sources: ChatSource[];
+  chart_data: ChartDataEntry[];
   created_at: string;
 }
 

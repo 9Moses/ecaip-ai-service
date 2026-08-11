@@ -64,11 +64,18 @@ class PowerBIBridge(BIBridge):
         columns = list(rows_raw[0].keys()) if rows_raw else []
         rows = [[row.get(col) for col in columns] for row in rows_raw]
 
+        dashboard_url = (
+            f"https://app.powerbi.com/"
+            f"groups/{self.workspace_id}/"
+            f"datasets/{self.dataset_id}/details"
+        )
+
         return BIQueryResult(
             columns=columns,
             rows=rows,
             source_label="Power BI (live dataset)",
             is_mock_data=False,
+            dashboard_url=dashboard_url
         )
 
     @classmethod
