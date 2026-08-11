@@ -129,7 +129,7 @@ def build_summary_prompt(raw_text: str) -> tuple[str, str]:
 def build_inconsistency_prompt(extracted_fields: dict[str, Any], raw_text: str) -> tuple[str, str]:
     system_prompt = _INCONSISTENCY_SYSTEM_PROMPT.format(prompt_version=INCONSISTENCY_PROMPT_VERSION)
     user_prompt = (
-        f"Extracted fields:\n{extracted_fields}\n\n" f"Original document text:\n{raw_text[:8000]}"
+        f"Extracted fields:\n{extracted_fields}\n\nOriginal document text:\n{raw_text[:8000]}"
     )
     return system_prompt, user_prompt
 

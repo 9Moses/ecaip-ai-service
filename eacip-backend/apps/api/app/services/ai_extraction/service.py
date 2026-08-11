@@ -71,7 +71,7 @@ async def extract_structured_fields(
         status="needs_review",
         extracted_fields={},
         raw_llm_output=retry_response_text,
-        error_message="LLM output did not match the expected schema " "after one retry.",
+        error_message="LLM output did not match the expected schema after one retry.",
     )
 
 

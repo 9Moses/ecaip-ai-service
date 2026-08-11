@@ -124,7 +124,7 @@ async def check_duplicate_claim_number(
             f"""
             Claim number '{claim_number}' also appears in
             {len(duplicates)} other document(s):
-            {', '.join(duplicates)}
+            {", ".join(duplicates)}
             """,
             severity="high",
         )
