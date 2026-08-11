@@ -4,6 +4,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.role import Role
 from app.models.user import User
 from app.models.chat import ChatMessage, ChatSession
+from app.models.fraud_flag import FraudFlag
 
 __all__ = [
     "Role",
@@ -13,4 +14,5 @@ __all__ = [
     "DocumentExtraction",
     "ChatMessage",
     "ChatSession",
+    "FraudFlag",
 ]

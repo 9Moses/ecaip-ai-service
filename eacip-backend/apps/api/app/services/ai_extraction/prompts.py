@@ -6,6 +6,7 @@ from app.schemas.extraction_fields import get_extraction_schema
 EXTRACTION_PROMPT_VERSION = "v1"
 SUMMARIZATION_PROMPT_VERSION = "v1"
 INCONSISTENCY_PROMPT_VERSION = "v1"
+FRAUD_RATIONALE_PROMPT_VERSION = "v1"
 
 _SYSTEM_PROMPT_TEMPLATE = """You are a document intelligence system
 for an insurance claims platform.
@@ -60,6 +61,18 @@ of objects, each with:
 - "severity": one of "low", "medium", "high"
 
 If you find no issues, respond with an empty array: []
+Prompt version: {prompt_version}
+"""
+
+_FRAUD_RATIONALE_SYSTEM_PROMPT = """You are writing a fraud-review summary
+for a human Fraud Analyst at an insurance company. You will be given a
+list of specific findings
+about a claim. Write a concise, neutral, professional paragraph
+(3-5 sentences) summarizing
+what was found and why it warrants human review. Do NOT state that
+raud has occurred — only
+that these specific findings warrant investigation. Do not add
+findings beyond what's listed.
 Prompt version: {prompt_version}
 """
 
@@ -118,4 +131,13 @@ def build_inconsistency_prompt(extracted_fields: dict[str, Any], raw_text: str) 
     user_prompt = (
         f"Extracted fields:\n{extracted_fields}\n\n" f"Original document text:\n{raw_text[:8000]}"
     )
+    return system_prompt, user_prompt
+
+
+def build_fraud_rationale_prompt(findings: list[dict[str, str]]) -> tuple[str, str]:
+    system_prompt = _FRAUD_RATIONALE_SYSTEM_PROMPT.format(
+        prompt_version=FRAUD_RATIONALE_PROMPT_VERSION
+    )
+    findings_text = "\n".join(f"- [{f['severity']}] {f['field']}: {f['message']}" for f in findings)
+    user_prompt = f"Findings:\n{findings_text}"
     return system_prompt, user_prompt

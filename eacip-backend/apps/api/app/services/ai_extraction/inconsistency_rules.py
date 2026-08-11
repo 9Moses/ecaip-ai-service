@@ -1,5 +1,9 @@
 from datetime import date
 from typing import Any
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.document_extraction import DocumentExtraction
 
 FindingList = list[dict[str, Any]]
 
@@ -91,3 +95,37 @@ def _parse_date(value: Any) -> date | None:
         return date.fromisoformat(value) if hasattr(date, "fromisoformat") else None
     except (ValueError, TypeError):
         return None
+
+
+async def check_duplicate_claim_number(
+    db: AsyncSession,
+    owner_id: object,
+    current_document_id: object,
+    claim_number: str | None,
+) -> FindingList:
+    if not claim_number:
+        return []
+
+    result = await db.execute(
+        select(DocumentExtraction.document_id, DocumentExtraction.extracted_fields).where(
+            DocumentExtraction.document_id != current_document_id
+        )
+    )
+    duplicates = [
+        str(doc_id) for doc_id, fields in result.all() if fields.get("claim_number") == claim_number
+    ]
+
+    if not duplicates:
+        return []
+
+    return [
+        _finding(
+            "claim_number",
+            f"""
+            Claim number '{claim_number}' also appears in
+            {len(duplicates)} other document(s):
+            {', '.join(duplicates)}
+            """,
+            severity="high",
+        )
+    ]
