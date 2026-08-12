@@ -81,6 +81,7 @@ def _try_parse_and_validate(
 ) -> dict[str, Any] | None:
     try:
         raw_json = extract_json_from_llm_response(response_text)
+        raw_json = _coerce_list_fields(raw_json, schema_cls)
         validated = schema_cls.model_validate(raw_json)
         return validated.model_dump(mode="json")
     except (ValueError, ValidationError):
@@ -152,3 +153,21 @@ async def detect_inconsistencies(
     rule_findings = run_rule_based_checks(document_type, extracted_fields)
     llm_findings = await find_llm_inconsistencies(extracted_fields, raw_text)
     return rule_findings + llm_findings
+
+
+def _coerce_list_fields(raw_json: dict[str, Any], schema_cls: type[BaseModel]) -> dict[str, Any]:
+    """
+    Some LLMs return a comma-separated string for a field the schema defines as
+    list[str], despite prompt instructions. Coerce rather than fail outright —
+    validation still runs afterward, so a genuinely malformed value still gets
+    caught, this just tolerates the single most common LLM formatting mistake.
+    """
+    coerced = dict(raw_json)
+    for field_name, field_info in schema_cls.model_fields.items():
+        annotation = field_info.annotation
+        is_list_field = getattr(annotation, "__origin__", None) is list
+        if is_list_field and isinstance(coerced.get(field_name), str):
+            coerced[field_name] = [
+                item.strip() for item in coerced[field_name].split(",") if item.strip()
+            ]
+    return coerced

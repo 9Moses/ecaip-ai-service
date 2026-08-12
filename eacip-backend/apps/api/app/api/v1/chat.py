@@ -80,6 +80,10 @@ async def send_message(
 
     user_message = ChatMessage(session_id=session_id, role="user", content=payload.content)
     db.add(user_message)
+
+    if session.title == "New conversation":
+        session.title = payload.content[:60] + ("…" if len(payload.content) > 60 else "")
+
     await db.commit()
 
     context = await assemble_context(payload.content, user.id, db)

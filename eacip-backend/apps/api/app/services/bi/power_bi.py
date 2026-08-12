@@ -75,7 +75,7 @@ class PowerBIBridge(BIBridge):
             rows=rows,
             source_label="Power BI (live dataset)",
             is_mock_data=False,
-            dashboard_url=dashboard_url
+            dashboard_url=dashboard_url,
         )
 
     @classmethod

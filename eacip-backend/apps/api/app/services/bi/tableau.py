@@ -51,9 +51,9 @@ class TableauBridge(BIBridge):
                     "query": {
                         "fields": [
                             {"fieldCaption": "Claim Type"},
-                            {"fieldCaption": "Volume", "function": "SUM"},
+                            {"fieldCaption": "Claims Volume", "function": "SUM"},
                             {"fieldCaption": "Fraud Flag Rate", "function": "AVG"},
-                        ]
+                        ],
                     },
                 },
                 timeout=30,
@@ -72,8 +72,8 @@ class TableauBridge(BIBridge):
         rows = [[row.get(col) for col in columns] for row in data_rows]
 
         dashboard_url = (
-            f"{self.server_url}/"
-            f"#/site/{self.site_id}/datasources/{self.datasource_luid}"
+            f"{self.server_url}/#/site/{self.site_id}/datasources"
+            + f"/{self.datasource_luid}/connections"
         )
 
         return BIQueryResult(

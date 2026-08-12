@@ -54,7 +54,7 @@ class OtherDocumentFields(BaseModel):
     notable_entities: list[str] = Field(
         default_factory=list,
         description="""
-            Names, ID numbers, or other notable identifiers found
+            Names, ID numbers, or other notable identifiers found. Must be an array of strings.
         """,
     )
 

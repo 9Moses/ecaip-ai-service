@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
-
 from typing import Any
 
 
 @dataclass
 class BIQueryResult:
     columns: list[str]
-    rows: list[list]
+    rows: list[list[Any]]
     source_label: str
     is_mock_data: bool = False
     dashboard_url: str | None = None

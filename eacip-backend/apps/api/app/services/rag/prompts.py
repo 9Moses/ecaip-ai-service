@@ -19,6 +19,12 @@ Prompt version: {prompt_version}
 
 Document excerpts:
 {context_block}
+
+Keep answers concise and professional, appropriate for a claims/underwriting/fraud-analysis
+audience. When you reference a specific fact, it should be traceable to the excerpts below.
+When your answer draws from business intelligence data, briefly name which dataset it came
+from (e.g. "based on your Superstore sales data") so it's clear whether the figures relate to
+claims/documents or general business metrics from a separate connected dataset.
 """
 
 
