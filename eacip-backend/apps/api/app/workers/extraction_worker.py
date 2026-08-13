@@ -19,6 +19,9 @@ from app.services.ai_extraction.service import (
     summarize_document,
 )
 from app.services.rag.indexing import index_document
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from app.services.analytics_export.backfill import run_backfill
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("extraction_worker")
@@ -174,8 +177,14 @@ async def process_indexing_message(message: aio_pika.abc.AbstractIncomingMessage
 
 async def main() -> None:
     connection = await aio_pika.connect_robust(settings.rabbitmq_url)
+
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(run_backfill, "interval", minutes=15, id="analytics_export_backfill")
+    scheduler.start()
+
     async with connection:
         channel = await connection.channel()
+
         await channel.set_qos(prefetch_count=2)
         # process up to 2 documents concurrently per worker
 

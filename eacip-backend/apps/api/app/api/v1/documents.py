@@ -19,6 +19,7 @@ from app.models.document_extraction import DocumentExtraction
 from app.schemas.ai_extraction import AIExtractionResponse, ConfirmExtractionRequest
 from app.models.fraud_flag import FraudFlag
 from app.services.fraud.service import assess_fraud_risk
+from app.services.analytics_export.service import export_document
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -284,5 +285,6 @@ async def confirm_ai_extraction(
             # this "cleared" or "confirmed_fraud", a re-confirmation shouldn't silently
             # reopen their decision. Only score/rationale/evidence refresh.
         await db.commit()
+        await export_document(db, document_id)
 
     return AIExtractionResponse.model_validate(extraction)
