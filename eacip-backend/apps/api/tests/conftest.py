@@ -10,6 +10,8 @@ that deletes test-email rows after each test.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -33,7 +35,7 @@ async def setup_db_roles(anyio_backend: str) -> None:
 
 
 @pytest.fixture()
-async def client() -> AsyncClient:
+async def client() -> AsyncGenerator[AsyncClient, None]:
     """
     Yields an AsyncClient bound to the FastAPI app with a fresh DB engine
     created in the current event loop.  Cleans up test rows after each test.
@@ -62,6 +64,12 @@ async def client() -> AsyncClient:
 
     async def _cleanup(conn_):
         await conn_.execute(text("DELETE FROM refresh_tokens"))
+        await conn_.execute(
+            text(
+                f"DELETE FROM audit_logs WHERE user_id IN "
+                f"(SELECT id FROM users WHERE email IN ({emails_sql}))"
+            )
+        )
         await conn_.execute(text(f"DELETE FROM users WHERE email IN ({emails_sql})"))
 
     # Pre-test cleanup (removes rows left by a previous interrupted run)
@@ -81,6 +89,12 @@ async def client() -> AsyncClient:
 
         async with engine.begin() as conn:
             await conn.execute(text2("DELETE FROM refresh_tokens"))
+            await conn.execute(
+                text2(
+                    f"DELETE FROM audit_logs WHERE user_id IN "
+                    f"(SELECT id FROM users WHERE email IN ({emails_sql}))"
+                )
+            )
             await conn.execute(text2(f"DELETE FROM users WHERE email IN ({emails_sql})"))
 
         await engine.dispose()
