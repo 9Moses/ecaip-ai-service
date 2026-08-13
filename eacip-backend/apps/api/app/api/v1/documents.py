@@ -20,6 +20,7 @@ from app.schemas.ai_extraction import AIExtractionResponse, ConfirmExtractionReq
 from app.models.fraud_flag import FraudFlag
 from app.services.fraud.service import assess_fraud_risk
 from app.services.analytics_export.service import export_document
+from app.core.audit import log_audit_event
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -101,6 +102,13 @@ async def upload_document(
     db.add(document)
     await db.commit()
     await db.refresh(document)
+    await log_audit_event(
+        db,
+        "document.upload",
+        user_id=user.id,
+        resource=f"document:{document.id}",
+        metadata={"file_name": document.file_name, "document_type": document.document_type},
+    )
 
     try:
         await publish_extraction_job(document.id)
@@ -137,6 +145,9 @@ async def get_document(
     )
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    await log_audit_event(db, "document.view", user_id=user.id, resource=f"document:{document_id}")
+
     return DocumentResponse.model_validate(document)
 
 

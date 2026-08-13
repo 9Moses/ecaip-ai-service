@@ -16,6 +16,7 @@ from app.schemas.chat import ChatMessageResponse, ChatSessionResponse, SendMessa
 from app.services.rag.context import assemble_context
 from app.services.rag.prompts import build_chat_prompt
 from app.services.bi.formatting import format_as_text_table, to_chart_data
+from app.core.audit import log_audit_event
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -87,6 +88,17 @@ async def send_message(
     await db.commit()
 
     context = await assemble_context(payload.content, user.id, db)
+
+    await log_audit_event(
+        db,
+        "chat.query",
+        user_id=user.id,
+        resource=f"session:{session_id}",
+        metadata={
+            "category": context.category.value,
+            "bi_sources_queried": len(context.bi_results),
+        },
+    )
 
     bi_text_tables = [format_as_text_table(r) for r in context.bi_results]
     system_prompt, user_prompt = build_chat_prompt(

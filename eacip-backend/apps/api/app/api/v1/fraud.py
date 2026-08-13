@@ -9,6 +9,7 @@ from app.core.rbac import require_role
 from app.models.fraud_flag import FraudFlag
 from app.models.user import User
 from app.schemas.fraud import FraudFlagResponse, UpdateFraudFlagRequest
+from app.core.audit import log_audit_event
 
 router = APIRouter(prefix="/fraud", tags=["fraud"])
 
@@ -66,6 +67,16 @@ async def update_fraud_flag(
         flag.assigned_to = payload.assigned_to
 
     await db.commit()
+    await log_audit_event(
+        db,
+        "fraud_flag.status_changed",
+        user_id=user.id,
+        resource=f"fraud_flag:{flag_id}",
+        metadata={
+            "new_status": payload.status,
+            "assigned_to": str(payload.assigned_to) if payload.assigned_to else None,
+        },
+    )
     await db.refresh(flag)
 
     return FraudFlagResponse.model_validate(flag)

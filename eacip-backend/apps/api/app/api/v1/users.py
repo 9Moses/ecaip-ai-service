@@ -9,6 +9,7 @@ from app.core.rbac import require_role
 from app.models.role import Role
 from app.models.user import User
 from app.schemas.auth import UpdateRoleRequest, UserResponse
+from app.core.audit import log_audit_event
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -50,6 +51,14 @@ async def update_user_role(
         user.role_id = new_role.id
         await db.commit()
         await db.refresh(user)
+
+        await log_audit_event(
+            db,
+            "user.role_changed",
+            user_id=_admin.id,
+            resource=f"user:{user_id}",
+            metadata={"new_role": new_role.name},
+        )
     except Exception:
         await db.rollback()
         raise HTTPException(

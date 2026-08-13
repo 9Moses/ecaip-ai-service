@@ -31,6 +31,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from app.core.audit import log_audit_event
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -83,6 +84,9 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create user account.",
         )
+
+    await log_audit_event(db, "user.register", user_id=user.id, resource=f"user:{user.id}")
+
     return UserResponse(
         id=user.id, email=user.email, role=default_role.name, is_active=user.is_active
     )
@@ -91,19 +95,31 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     user = await db.scalar(select(User).where(User.email == payload.email))
+
     bad_creds = (
         user is None
         or user.password_hash is None
         or not verify_password(payload.password, user.password_hash)
     )
+
     if bad_creds:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
+        await log_audit_event(
+            db,
+            "user.login",
+            result="failure",
+            resource=f"email:{payload.email}",
+            metadata={"reason": "invalid_credentials"},
+        )
     assert user is not None  # narrowed: bad_creds already covers the None case
+
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+
+    await log_audit_event(db, "user.login", user_id=user.id, resource=f"user:{user.id}")
 
     return await _issue_tokens(db, user)
 
@@ -150,6 +166,7 @@ async def logout(payload: RefreshRequest, db: AsyncSession = Depends(get_db)) ->
     stored = await db.scalar(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
     if stored:
         stored.revoked = True
+        await log_audit_event(db, "user.logout", user_id=None, resource="refresh_token")
         await db.commit()
 
 
