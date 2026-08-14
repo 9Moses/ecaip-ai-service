@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: EACIP
+    folder: EACIP
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.api.v1 import router as v1_router
+from prometheus_fastapi_instrumentator import Instrumentator
+from app.core.tracing import setup_tracing
 
 settings = get_settings()
 
@@ -33,5 +35,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+setup_tracing("eacip-api", app=app)
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 app.include_router(v1_router, prefix=settings.api_v1_prefix)

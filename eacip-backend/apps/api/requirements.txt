@@ -52,4 +52,13 @@ litellm==1.95.0
 qdrant-client==1.18.0
 cryptography==50.0.0
 msal==1.37.0
-APScheduler==3.11.3
+APScheduler==3.11.
+
+prometheus-fastapi-instrumentator==7.1.0
+
+opentelemetry-sdk==1.44.0
+opentelemetry-exporter-otlp==1.44.0
+
+opentelemetry-instrumentation-fastapi==0.65b0
+opentelemetry-instrumentation-sqlalchemy==0.65b0
+opentelemetry-instrumentation-httpx==0.65b0

@@ -21,6 +21,7 @@ from app.models.fraud_flag import FraudFlag
 from app.services.fraud.service import assess_fraud_risk
 from app.services.analytics_export.service import export_document
 from app.core.audit import log_audit_event
+from app.core.metrics import fraud_flags_created_total
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -286,6 +287,7 @@ async def confirm_ai_extraction(
                     status="open",
                 )
             )
+            fraud_flags_created_total.inc()
         else:
             # Re-confirmation (e.g., a field was corrected after an earlier confirm) —
             # update the existing flag rather than creating a duplicate for the same document

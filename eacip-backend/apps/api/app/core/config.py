@@ -59,6 +59,10 @@ class Settings(BaseSettings):
 
     bi_credentials_encryption_key: str = ""
 
+    otel_exporter_endpoint: str = (
+        ""  # e.g. "otel-collector:4317" — empty disables export, spans still created locally
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

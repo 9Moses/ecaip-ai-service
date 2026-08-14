@@ -22,6 +22,13 @@ from app.services.rag.indexing import index_document
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.services.analytics_export.backfill import run_backfill
+from prometheus_client import start_http_server
+
+from app.core.metrics import (
+    ai_extraction_total,
+    document_extraction_total,
+)
+from app.core.tracing import setup_tracing
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("extraction_worker")
@@ -53,6 +60,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None
                 document.extraction_method = result.method
                 document.page_count = result.page_count
                 document.status = "extracted"
+                document_extraction_total.labels(method=result.method, status="success").inc()
                 document.error_message = None
                 extraction_succeeded = True
                 logger.info(
@@ -65,6 +73,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage) -> None
             except Exception as exc:
                 logger.exception("Extraction failed for document %s", document_id)
                 document.status = "failed"
+                document_extraction_total.labels(method="unknown", status="failure").inc()
                 document.error_message = str(exc)
 
             await db.commit()
@@ -117,6 +126,7 @@ async def process_ai_extraction_message(
             result = await extract_structured_fields(document.document_type, document.raw_text)
 
             extraction.status = result.status
+            ai_extraction_total.labels(status=result.status).inc()
             extraction.extracted_fields = result.extracted_fields
             extraction.raw_llm_output = result.raw_llm_output
             extraction.error_message = result.error_message
@@ -176,6 +186,7 @@ async def process_indexing_message(message: aio_pika.abc.AbstractIncomingMessage
 
 
 async def main() -> None:
+    setup_tracing("eacip-worker")
     connection = await aio_pika.connect_robust(settings.rabbitmq_url)
 
     scheduler = AsyncIOScheduler()
@@ -192,6 +203,8 @@ async def main() -> None:
         ai_queue = await channel.declare_queue(settings.ai_extraction_queue, durable=True)
         indexing_queue = await channel.declare_queue(settings.indexing_queue, durable=True)
 
+        start_http_server(9100)
+        logger.info("Worker metrics exposed on :9100/metrics")
         logger.info("Worker started,consuming OCR and AI extraction queues...")
 
         await ocr_queue.consume(process_message)
