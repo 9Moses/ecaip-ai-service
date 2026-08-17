@@ -30,7 +30,7 @@ from app.core.db import get_db
 from app.main import app
 from app.models.role import Role
 from app.models.user import User
-from typing import  TypedDict, cast
+from typing import TypedDict, cast
 
 TEST_PASSWORD = "correct-horse-battery-staple"
 
@@ -99,6 +99,16 @@ async def cleanup_test_data(db_engine: AsyncEngine) -> None:
     emails_sql = ", ".join(f"'{email}'" for email in TEST_EMAILS)
 
     async with db_engine.begin() as conn:
+        # Delete child-table rows first to avoid FK violations.
+        await conn.execute(text(f"""
+                DELETE FROM refresh_tokens
+                WHERE user_id IN (
+                    SELECT id
+                    FROM users
+                    WHERE email IN ({emails_sql})
+                )
+                """))
+
         await conn.execute(text(f"""
                 DELETE FROM audit_logs
                 WHERE user_id IN (
