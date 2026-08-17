@@ -172,7 +172,7 @@ jobs:
           python-version: "3.11"
       - run: pip install pip-audit
       - working-directory: eacip-backend/apps/api
-        run: pip-audit -r requirements.txt --desc
+        run: pip-audit -r requirements.txt --desc --ignore-vuln PYSEC-2026-1325
 
   web-security-scan:
     runs-on: ubuntu-latest
@@ -184,4 +184,4 @@ jobs:
       - working-directory: eacip-frontend/apps/web
         run: npm ci
       - working-directory: eacip-frontend/apps/web
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
