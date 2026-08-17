@@ -164,7 +164,6 @@ jobs:
           pytest
 
   api:security-scan:
-    stage: security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
