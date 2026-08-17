@@ -163,7 +163,7 @@ jobs:
           alembic upgrade head
           pytest
 
-  api:security-scan:
+  api-security-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -176,7 +176,7 @@ jobs:
       - working-directory: eacip-backend/apps/api
         run: pip-audit -r requirements-scan.txt --desc
 
-  web:security-scan:
+  web-security-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
