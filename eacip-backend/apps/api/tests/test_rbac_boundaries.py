@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 
 pytestmark = pytest.mark.anyio
 
@@ -62,8 +63,10 @@ class TestAdminEndpointsRBAC:
 
 
 class TestDocumentOwnershipScoping:
+    @patch("app.api.v1.documents.upload_file")
+    @patch("app.api.v1.documents.publish_extraction_job")
     async def test_user_cannot_view_another_users_document(
-        self, api_client, employee_token, fraud_analyst_token
+        self, mock_publish, mock_upload, api_client, employee_token, fraud_analyst_token
     ):
         # Upload as one user
         files = {"file": ("test.pdf", b"%PDF-1.4 fake content", "application/pdf")}
